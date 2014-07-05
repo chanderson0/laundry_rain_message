@@ -1,0 +1,23 @@
+{
+  "name": "minute_sampan",
+  "version": "0.1.0",
+  "description": "",
+  "main": "web.js",
+  "scripts": {
+    "start": "node web.js"
+  },
+  "author": "Chris Anderson <chris@heyanderson.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "css-brunch": "^1.7.0",
+    "clean-css-brunch": "^1.7.1",
+    "ngmin-uglify-js-brunch": "^1.7.13",
+    "auto-reload-brunch": "^1.7.3",
+    "less-brunch": "^1.7.2",
+    "javascript-brunch": "^1.7.1",
+    "coffee-script-brunch": "^1.8.0"
+  },
+  "dependencies": {
+    "express": "^4.4.3"
+  }
+}

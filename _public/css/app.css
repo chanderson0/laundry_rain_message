@@ -1,0 +1,41 @@
+body, html {
+  margin: 0;
+  padding: 0;
+}
+
+#bars {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+}
+
+#bars .bar-container {
+  position: relative;
+  float: left;
+  width: 5px;
+  height: 50px;
+}
+
+#bars .bar-container .bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #fff;
+}
+
+#bars .bar-container .line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  border-top: 2px solid red;
+  width: 100%;
+}
+
+audio {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+/*# sourceMappingURL=app.css.map*/

@@ -1,0 +1,3 @@
+*.map binary
+_public/js/vendor.js binary
+app/vendor-js/* binary

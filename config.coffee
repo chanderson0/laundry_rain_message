@@ -16,7 +16,7 @@ exports.config =
         'js/app.js': /^app\/js/
       order:
         before: [
-          'bower_components/threejs/build/three.js',
+          'bower_components/threejs/build/three.min.js',
           'bower_components/underscore/underscore.js'
         ]
     stylesheets:

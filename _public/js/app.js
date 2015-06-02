@@ -1,22 +1,34 @@
-var ClothBlock, ClothGenerator, ClothLaundry, camera, colorize, generate_material, images, load_image, lol, mouse, onload_waiters, renderer, s, scene, stats, texturize, vx, vy, wait_for_image, y_bottom, y_top, _colorize,
+var CLOTHING_ASSETS, CLOTH_ROTATION_MAX, CLOTH_VY, CLOTH_X, CLOTH_Y, ClothGenerator, ClothLaundry, FPS, NOISE_DATA, NOISE_DELAY, RANDOM_CLOTH_DENSITY, Y_BOX_MAX, Y_BOX_MIN, Z_BOX_MIN, Z_PLANES, Z_PLANE_INCREMENT, Z_PLANE_MIN_DEPTH, camera, mouse, renderer, s, scene, stats,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-renderer = new THREE.WebGLRenderer();
+FPS = 60;
 
-renderer.setClearColor(0xffffff, 1);
+CLOTH_X = 200;
 
-camera = null;
+CLOTH_Y = 200;
 
-scene = null;
+CLOTH_VY = -10;
 
-mouse = null;
+CLOTH_ROTATION_MAX = 0.02;
 
-stats = new Stats();
+CLOTHING_ASSETS = ['assets/shirt.png', 'assets/boxers.png', 'assets/pants.png'];
 
-stats.setMode(0);
+Y_BOX_MAX = 4000;
 
-lol = [
+Y_BOX_MIN = -4000;
+
+Z_BOX_MIN = 4000;
+
+Z_PLANES = 10;
+
+Z_PLANE_INCREMENT = 100;
+
+Z_PLANE_MIN_DEPTH = 2000;
+
+RANDOM_CLOTH_DENSITY = 1000;
+
+NOISE_DATA = [
   {
     "x": -0.6189011892925407,
     "y": -0.20134918343540137,
@@ -1324,148 +1336,56 @@ lol = [
   }
 ];
 
-images = {};
+NOISE_DELAY = 500;
 
-onload_waiters = {};
+renderer = new THREE.WebGLRenderer();
 
-load_image = function(url) {
-  var image;
-  image = null;
-  if (images[url]) {
-    image = images[url];
-  } else {
-    image = new Image();
-    image.onload = function() {
-      var waiter, waiters, _i, _len;
-      waiters = onload_waiters[url];
-      if (waiters && waiters !== 'done') {
-        for (_i = 0, _len = waiters.length; _i < _len; _i++) {
-          waiter = waiters[_i];
-          waiter();
-        }
-      }
-      return onload_waiters[url] = 'done';
-    };
-    image.src = url;
-    images[url] = image;
-  }
-  return image;
-};
+renderer.setClearColor(0xffffff, 1);
 
-wait_for_image = function(url, cb) {
-  if (onload_waiters[url] === 'done') {
-    return cb();
-  } else if (onload_waiters[url]) {
-    return onload_waiters[url].push(cb);
-  } else {
-    return onload_waiters[url] = [cb];
-  }
-};
+camera = null;
 
-_colorize = function(image, r, g, b) {
-  var canvas, ctx, data, i, imageData, _i, _ref;
-  canvas = document.createElement("canvas");
-  canvas.width = image.width;
-  canvas.height = image.height;
-  canvas.getContext("2d").drawImage(image, 0, 0);
-  ctx = canvas.getContext("2d");
-  imageData = ctx.getImageData(0, 0, image.width, image.height);
-  data = imageData.data;
-  for (i = _i = 0, _ref = data.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-    if (i % 4 !== 0) {
-      continue;
-    }
-    if (data[i + 3] !== 0) {
-      data[i] = r;
-      data[i + 1] = g;
-      data[i + 2] = b;
-    }
-  }
-  ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL("image/png");
-};
+scene = null;
 
-colorize = _.memoize(_colorize, function() {
-  return JSON.stringify([arguments[0].src, arguments[1], arguments[2], arguments[3]]);
-});
+mouse = null;
 
-texturize = function(url, r, g, b, cb) {
-  var image;
-  image = load_image(url);
-  return wait_for_image(url, function() {
-    return cb(colorize(image, r, g, b));
-  });
-};
+stats = new Stats();
 
-generate_material = function(url, r, g, b) {
-  var image, texture;
-  image = document.createElement('img');
-  texture = new THREE.Texture(image);
-  image.onload = function() {
-    return texture.needsUpdate = true;
-  };
-  texturize(url, r, g, b, function(data) {
-    return image.src = data;
-  });
-  return new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    side: THREE.DoubleSide
-  });
-};
+stats.setMode(0);
 
-vy = -10;
+stats.domElement.style.display = 'none';
 
-vx = 2;
+stats.domElement.style.position = 'absolute';
 
-ClothBlock = (function(_super) {
-  __extends(ClothBlock, _super);
+stats.domElement.style.left = '0px';
 
-  function ClothBlock(point, wireframe) {
-    THREE.Object3D.call(this);
-    this.cube = new THREE.Mesh(new THREE.BoxGeometry(200, 200, 200), new THREE.MeshNormalMaterial({
-      wireframe: wireframe
-    }));
-    this.cube.position = point;
-    this.add(this.cube);
-  }
+stats.domElement.style.top = '0px';
 
-  ClothBlock.prototype.tick = function(dt) {
-    return this.cube.position.y += vy * dt;
-  };
-
-  return ClothBlock;
-
-})(THREE.Object3D);
+document.body.appendChild(stats.domElement);
 
 ClothLaundry = (function(_super) {
   __extends(ClothLaundry, _super);
 
   function ClothLaundry(point, material) {
     THREE.Object3D.call(this);
-    this.cloth = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), material);
-    this.cloth.position = point;
-    this.cloth.rotation.x = Math.random();
-    this.cloth.rotation.y = Math.random();
-    this.cloth.rotation.z = Math.random();
+    this.cloth = new THREE.Mesh(new THREE.PlaneBufferGeometry(CLOTH_X, CLOTH_Y), material);
+    this.rx = Math.random() * CLOTH_ROTATION_MAX;
+    this.rz = Math.random() * CLOTH_ROTATION_MAX;
+    this.cloth.position.copy(point);
+    this.cloth.rotation.x = Math.random() * Math.PI;
+    this.cloth.rotation.y = Math.random() * Math.PI;
+    this.cloth.rotation.z = Math.random() * Math.PI;
     this.add(this.cloth);
-    this.vx = 0.1 * Math.random() - 0.05;
   }
 
   ClothLaundry.prototype.tick = function(dt) {
-    this.cloth.position.y += vy * dt;
-    this.cloth.position.x += this.vx * dt;
-    this.cloth.rotation.z += 0.01;
-    return this.cloth.rotation.x += 0.02;
+    this.cloth.position.y += CLOTH_VY * dt;
+    this.cloth.rotation.z += this.rx * dt;
+    return this.cloth.rotation.x += this.rz * dt;
   };
 
   return ClothLaundry;
 
 })(THREE.Object3D);
-
-y_top = 4000;
-
-y_bottom = -46040166180033570;
 
 ClothGenerator = (function(_super) {
   __extends(ClothGenerator, _super);
@@ -1475,9 +1395,8 @@ ClothGenerator = (function(_super) {
     this.point = point;
     this.time = time;
     this.material = material;
-    this.elapsed = 0;
-    this.fired = false;
     this.cloths = [];
+    this.reset();
   }
 
   ClothGenerator.prototype.reset = function() {
@@ -1499,7 +1418,7 @@ ClothGenerator = (function(_super) {
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       cloth = _ref[_i];
       cloth.tick(dt);
-      if (cloth.cloth.position.y < y_bottom) {
+      if (cloth.cloth.position.y < Y_BOX_MIN) {
         to_remove.push(cloth);
       }
     }
@@ -1521,65 +1440,71 @@ s = Sketch.create({
   element: renderer.domElement,
   context: renderer.context,
   setup: function() {
-    var clothGen, clothing, i, light, material, materials, point, ray, time, url, vector, vector_data, z, _i, _j, _k, _len;
+    var i, light, noise_item, point, ray, time, url, vector, z, _i, _j, _len;
     camera = new THREE.PerspectiveCamera(75, this.width / this.height, 1, 1000000);
     scene = new THREE.Scene();
     light = new THREE.DirectionalLight(0xffffff);
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
-    this.planes = [];
-    for (i = _i = 0; _i <= 10; i = ++_i) {
-      z = i * 100 + 2000;
-      this.planes.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), z));
-    }
     this.clothGens = [];
     this.elapsed = 0;
-    clothing = ['assets/shirt.png', 'assets/boxers.png', 'assets/pants.png'];
-    materials = (function() {
-      var _j, _len, _results;
+    this.planes = (function() {
+      var _i, _results;
       _results = [];
-      for (_j = 0, _len = clothing.length; _j < _len; _j++) {
-        url = clothing[_j];
-        _results.push(generate_material(url, 0, 0, 0));
+      for (i = _i = 0; 0 <= Z_PLANES ? _i <= Z_PLANES : _i >= Z_PLANES; i = 0 <= Z_PLANES ? ++_i : --_i) {
+        z = i * Z_PLANE_INCREMENT + Z_PLANE_MIN_DEPTH;
+        _results.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), z));
       }
       return _results;
     })();
-    for (_j = 0, _len = lol.length; _j < _len; _j++) {
-      vector_data = lol[_j];
-      vector = new THREE.Vector3(vector_data.x, vector_data.y, vector_data.z);
+    this.materials = (function() {
+      var _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = CLOTHING_ASSETS.length; _i < _len; _i++) {
+        url = CLOTHING_ASSETS[_i];
+        _results.push((function(url) {
+          var loader, material;
+          material = new THREE.MeshBasicMaterial({
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+          loader = new THREE.TextureLoader();
+          loader.load(url, function(tex) {
+            material.map = tex;
+            return material.needsUpdate = true;
+          });
+          return material;
+        })(url));
+      }
+      return _results;
+    })();
+    for (_i = 0, _len = NOISE_DATA.length; _i < _len; _i++) {
+      noise_item = NOISE_DATA[_i];
+      vector = new THREE.Vector3(noise_item.x, noise_item.y, noise_item.z);
       ray = new THREE.Ray(camera.position, vector);
       point = ray.intersectPlane(this.planes[Math.floor(Math.random() * this.planes.length)]);
-      time = 500 - (y_top - point.y) * 0.1 + 500;
-      point.y = y_top;
-      material = materials[Math.floor(Math.random() * materials.length)];
-      clothGen = new ClothGenerator(point, time, material);
-      scene.add(clothGen);
-      this.clothGens.push(clothGen);
+      time = NOISE_DELAY - (Y_BOX_MAX - point.y) * 0.1 + NOISE_DELAY;
+      point.y = Y_BOX_MAX;
+      this.generateClothGen(point, time);
     }
-    materials = (function() {
-      var _k, _len1, _results;
-      _results = [];
-      for (_k = 0, _len1 = clothing.length; _k < _len1; _k++) {
-        url = clothing[_k];
-        _results.push(generate_material(url, 0, 0, 0));
-      }
-      return _results;
-    })();
-    for (i = _k = 0; _k <= 1000; i = ++_k) {
+    for (i = _j = 0; 0 <= RANDOM_CLOTH_DENSITY ? _j <= RANDOM_CLOTH_DENSITY : _j >= RANDOM_CLOTH_DENSITY; i = 0 <= RANDOM_CLOTH_DENSITY ? ++_j : --_j) {
       vector = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, -Math.random());
       ray = new THREE.Ray(camera.position, vector);
-      point = ray.at(Math.random() * 2000 + 4000);
-      time = (y_top - point.y) * 0.1;
-      point.y = y_top;
-      material = materials[Math.floor(Math.random() * materials.length)];
-      clothGen = new ClothGenerator(point, time, material);
-      scene.add(clothGen);
-      this.clothGens.push(clothGen);
+      point = ray.at(Math.random() * Z_BOX_MIN / 2 + Z_BOX_MIN);
+      time = (Y_BOX_MAX - point.y) * 0.1;
+      point.y = Y_BOX_MAX;
+      this.generateClothGen(point, time);
     }
-    this.max_t = _.max(this.clothGens, function(c) {
+    return this.max_t = _.max(this.clothGens, function(c) {
       return c.time;
     }).time;
-    return console.log(this.max_t);
+  },
+  generateClothGen: function(point, time) {
+    var clothGen, material;
+    material = this.materials[Math.floor(Math.random() * this.materials.length)];
+    clothGen = new ClothGenerator(point, time, material);
+    scene.add(clothGen);
+    return this.clothGens.push(clothGen);
   },
   resize: function() {
     camera.aspect = this.width / this.height;
@@ -1588,7 +1513,7 @@ s = Sketch.create({
   },
   update: function() {
     var clothGen, norm_dt, _i, _j, _len, _len1, _ref, _ref1;
-    norm_dt = this.dt * 60 / 1000;
+    norm_dt = this.dt * FPS / 1000;
     _ref = this.clothGens;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       clothGen = _ref[_i];
@@ -1610,19 +1535,16 @@ s = Sketch.create({
     renderer.render(scene, camera);
     return stats.end();
   },
-  keydown: function(e) {},
+  keydown: function(e) {
+    if (e.which === 83) {
+      return stats.domElement.style.display = 'inherit';
+    }
+  },
   mousemove: function(e) {
     var mouse3D;
     mouse3D = new THREE.Vector3(((e.clientX / this.width) * 2 - 1) * 500, (-(e.clientY / this.height) * 2 + 1) * 500, -0.5);
-    camera.position = mouse3D;
+    camera.position.copy(mouse3D);
     return camera.lookAt(new THREE.Vector3(0, 0, -10000));
-  },
-  addMesh: function(point) {
-    var cube;
-    cube = new THREE.Mesh(new THREE.BoxGeometry(200, 200, 200), new THREE.MeshNormalMaterial());
-    cube.position = point;
-    scene.add(cube);
-    return cube;
   }
 });
 ;

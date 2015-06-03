@@ -5,7 +5,7 @@
 
 ## What?
 
-Hard to say, really. See the [3-word Challenges](http://heyanderson.com/projects/challenges) site for a bit more. Or see the `app/js/app.coffee` to see how it works.
+Hard to say, really. See the [3-word Challenges](http://heyanderson.com/projects/three_words) site for a bit more. Or see the `app/js/app.coffee` to see how it works.
 
 ## Tech
 
